@@ -1,4 +1,3 @@
-
 import org.example.NeuralNetwork;
 import org.testng.annotations.Test;
 
@@ -25,14 +24,12 @@ public class CircleClassificationTest {
 
         for (int i = 0; i < datasetSize; i++) {
             double angle = 2 * Math.PI * random.nextDouble();
-            double distance;
+            double distance = innerRadius + (outerRadius - innerRadius) * random.nextDouble();
             int targetClass;
 
-            if (random.nextBoolean()) {
-                distance = innerRadius * random.nextDouble();
+            if (distance <= innerRadius) {
                 targetClass = 0;
             } else {
-                distance = innerRadius + (outerRadius - innerRadius) * random.nextDouble();
                 targetClass = 1;
             }
 
@@ -50,7 +47,7 @@ public class CircleClassificationTest {
         List<double[]> testTargets = targets.subList(trainSize, datasetSize);
 
         // Initialize the neural network
-        NeuralNetwork nn = new NeuralNetwork(2, 200, 1, 0.1);
+        NeuralNetwork nn = new NeuralNetwork(2, 5, 8, 1, 0.1);
 
         // Train the neural network
         int epochs = 5000;
@@ -80,6 +77,6 @@ public class CircleClassificationTest {
 
         double accuracy = (double) correct / testSize * 100;
         System.out.println("Test accuracy: " + accuracy + "%");
-
     }
+
 }

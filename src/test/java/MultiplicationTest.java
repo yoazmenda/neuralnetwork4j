@@ -39,7 +39,7 @@ public class MultiplicationTest {
         List<double[]> testTargets = targets.subList(trainSize, datasetSize);
 
         // Initialize the neural network
-        NeuralNetwork nn = new NeuralNetwork(2, 100, 1, 0.1);
+        NeuralNetwork nn = new NeuralNetwork(2, 10, 8, 1, 0.1);
 
         // Train the neural network
         int epochs = 5000;

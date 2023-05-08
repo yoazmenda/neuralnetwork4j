@@ -6,7 +6,7 @@ import java.util.Random;
 public class NeuralNetwork implements Serializable {
 
     private double[] inputLayer;
-    private double[] hiddenLayer;
+    private double[][] hiddenLayer;
     private double[] outputLayer;
     private double[][] weightsIH;
     private double[][] weightsHO;
@@ -16,31 +16,31 @@ public class NeuralNetwork implements Serializable {
 
     /**
      * Initializes a new neural network with the specified input size, hidden size,
-     * output size, and learning rate. Initializes the weights and biases with
+     * output size, learning rate, and hidden layer shape (N, M). Initializes the weights and biases with
      * random values between -1 and 1.
      */
-    public NeuralNetwork(int inputSize, int hiddenSize, int outputSize, double learningRate) {
+    public NeuralNetwork(int inputSize, int hiddenSize, int hiddenSize2, int outputSize, double learningRate) {
         this.inputLayer = new double[inputSize];
-        this.hiddenLayer = new double[hiddenSize];
+        this.hiddenLayer = new double[hiddenSize][hiddenSize2];
         this.outputLayer = new double[outputSize];
 
-        this.weightsIH = new double[inputSize][hiddenSize];
-        this.weightsHO = new double[hiddenSize][outputSize];
+        this.weightsIH = new double[inputSize][hiddenSize2];
+        this.weightsHO = new double[hiddenSize2][outputSize];
         Random random = new Random();
         for (int i = 0; i < inputSize; i++) {
-            for (int j = 0; j < hiddenSize; j++) {
+            for (int j = 0; j < hiddenSize2; j++) {
                 this.weightsIH[i][j] = random.nextDouble() * 2 - 1;
             }
         }
-        for (int i = 0; i < hiddenSize; i++) {
+        for (int i = 0; i < hiddenSize2; i++) {
             for (int j = 0; j < outputSize; j++) {
                 this.weightsHO[i][j] = random.nextDouble() * 2 - 1;
             }
         }
 
-        this.biasH = new double[hiddenSize];
+        this.biasH = new double[hiddenSize2];
         this.biasO = new double[outputSize];
-        for (int i = 0; i < hiddenSize; i++) {
+        for (int i = 0; i < hiddenSize2; i++) {
             this.biasH[i] = random.nextDouble() * 2 - 1;
         }
         for (int i = 0; i < outputSize; i++) {
@@ -49,6 +49,51 @@ public class NeuralNetwork implements Serializable {
 
         this.learningRate = learningRate;
     }
+
+    public void train(double[] inputs, double[] targets) {
+        // Feed the inputs forward through the network and store the outputs
+        double[] outputs = feedForward(inputs);
+
+        // Calculate the errors in the output layer and hidden layer
+        double[] outputErrors = new double[outputLayer.length];
+        for (int i = 0; i < outputLayer.length; i++) {
+            outputErrors[i] = (targets[i] - outputs[i]) * sigmoidDerivative(outputLayer[i]);
+        }
+
+        double[] hiddenErrors = new double[hiddenLayer[0].length];
+        for (int i = 0; i < hiddenLayer[0].length; i++) {
+            double sum = 0.0;
+            for (int j = 0; j < outputLayer.length; j++) {
+                sum += outputErrors[j] * weightsHO[i][j];
+            }
+            hiddenErrors[i] = sum * sigmoidDerivative(hiddenLayer[0][i]);
+        }
+
+        // Calculate the average loss for this batch
+        double loss = 0.0;
+        for (int i = 0; i < outputLayer.length; i++) {
+            loss += Math.pow(targets[i] - outputs[i], 2);
+        }
+        loss /= outputLayer.length;
+
+        // Adjust the weights and biases using the errors and the learning rate
+        for (int i = 0; i < outputLayer.length; i++) {
+            for (int j = 0; j < hiddenLayer[0].length; j++) {
+                double delta = learningRate * outputErrors[i] * hiddenLayer[0][j];
+                weightsHO[j][i] += delta;
+            }
+            biasO[i] += learningRate * outputErrors[i];
+        }
+
+        for (int i = 0; i < hiddenLayer[0].length; i++) {
+            for (int j = 0; j < inputLayer.length; j++) {
+                double delta = learningRate * hiddenErrors[i] * inputLayer[j];
+                weightsIH[j][i] += delta;
+            }
+            biasH[i] += learningRate * hiddenErrors[i];
+        }
+    }
+
 
     /**
      * Calculates the outputs of the neural network for the given inputs.
@@ -62,19 +107,25 @@ public class NeuralNetwork implements Serializable {
 
         // Calculate the hidden layer values using the input layer and weightsIH
         for (int i = 0; i < hiddenLayer.length; i++) {
-            double sum = 0.0;
-            for (int j = 0; j < inputLayer.length; j++) {
-                sum += inputLayer[j] * weightsIH[j][i];
+            for (int j = 0; j < hiddenLayer[i].length; j++) {
+                double sum = 0.0;
+                for (int k = 0; k < inputLayer.length; k++) {
+                    sum += inputLayer[k] * weightsIH[k][j];
+                }
+                sum += biasH[j];
+                hiddenLayer[i][j] = sigmoid(sum);
             }
-            sum += biasH[i];
-            hiddenLayer[i] = sigmoid(sum);
         }
 
         // Calculate the output layer values using the hidden layer and weightsHO
         for (int i = 0; i < outputLayer.length; i++) {
             double sum = 0.0;
             for (int j = 0; j < hiddenLayer.length; j++) {
-                sum += hiddenLayer[j] * weightsHO[j][i];
+                double hiddenSum = 0.0;
+                for (int k = 0; k < hiddenLayer[j].length; k++) {
+                    hiddenSum += hiddenLayer[j][k] * weightsHO[k][i];
+                }
+                sum += hiddenSum;
             }
             sum += biasO[i];
             outputLayer[i] = sigmoid(sum);
@@ -82,48 +133,6 @@ public class NeuralNetwork implements Serializable {
 
         // Return the output layer values
         return outputLayer;
-    }
-
-
-    /**
-     * Updates the weights and biases of the neural network using backpropagation
-     * to minimize the difference between the actual outputs and the target outputs.
-     */
-    public void train(double[] inputs, double[] targets) {
-        // Feed the inputs forward through the network and store the outputs
-        double[] outputs = feedForward(inputs);
-
-        // Calculate the errors in the output layer and hidden layer
-        double[] outputErrors = new double[outputLayer.length];
-        for (int i = 0; i < outputLayer.length; i++) {
-            outputErrors[i] = (targets[i] - outputs[i]) * sigmoidDerivative(outputLayer[i]);
-        }
-
-        double[] hiddenErrors = new double[hiddenLayer.length];
-        for (int i = 0; i < hiddenLayer.length; i++) {
-            double sum = 0.0;
-            for (int j = 0; j < outputLayer.length; j++) {
-                sum += outputErrors[j] * weightsHO[i][j];
-            }
-            hiddenErrors[i] = sum * sigmoidDerivative(hiddenLayer[i]);
-        }
-
-        // Adjust the weights and biases using the errors and the learning rate
-        for (int i = 0; i < outputLayer.length; i++) {
-            for (int j = 0; j < hiddenLayer.length; j++) {
-                double delta = learningRate * outputErrors[i] * hiddenLayer[j];
-                weightsHO[j][i] += delta;
-            }
-            biasO[i] += learningRate * outputErrors[i];
-        }
-
-        for (int i = 0; i < hiddenLayer.length; i++) {
-            for (int j = 0; j < inputLayer.length; j++) {
-                double delta = learningRate * hiddenErrors[i] * inputLayer[j];
-                weightsIH[j][i] += delta;
-            }
-            biasH[i] += learningRate * hiddenErrors[i];
-        }
     }
 
     /**
@@ -141,5 +150,4 @@ public class NeuralNetwork implements Serializable {
         double sigmoidX = sigmoid(x);
         return sigmoidX * (1 - sigmoidX);
     }
-
 }
