@@ -47,20 +47,13 @@ public class CircleClassificationTest {
         List<double[]> testTargets = targets.subList(trainSize, datasetSize);
 
         // Initialize the neural network
-        NeuralNetwork nn = new NeuralNetwork(2, 5, 8, 1, 0.1);
+        NeuralNetwork nn = new NeuralNetwork(2, 3, 4, 1, 0.1);
 
         // Train the neural network
         int epochs = 5000;
-        for (int i = 0; i < epochs; i++) {
-            for (int j = 0; j < trainSize; j++) {
-                nn.train(trainInputs.get(j), trainTargets.get(j));
-            }
-
-            // Print progress
-            if (i % 500 == 0) {
-                System.out.println("Training progress: " + (double) i / epochs * 100 + "%");
-            }
-        }
+        double[][] trainInputsArray = trainInputs.toArray(new double[trainSize][2]);
+        double[][] trainTargetsArray = trainTargets.toArray(new double[trainSize][1]);
+        nn.train(trainInputsArray, trainTargetsArray, epochs);
 
         // Test the neural network
         int correct = 0;

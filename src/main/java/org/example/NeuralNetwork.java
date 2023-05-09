@@ -50,49 +50,64 @@ public class NeuralNetwork implements Serializable {
         this.learningRate = learningRate;
     }
 
-    public void train(double[] inputs, double[] targets) {
-        // Feed the inputs forward through the network and store the outputs
-        double[] outputs = feedForward(inputs);
+    public void train(double[][] inputs, double[][] targets, int epochs) {
+        for (int e = 0; e < epochs; e++) {
+            double totalLoss = 0.0;
+            for (int i = 0; i < inputs.length; i++) {
+                // Feed the inputs forward through the network and store the outputs
+                double[] outputs = feedForward(inputs[i]);
 
-        // Calculate the errors in the output layer and hidden layer
-        double[] outputErrors = new double[outputLayer.length];
-        for (int i = 0; i < outputLayer.length; i++) {
-            outputErrors[i] = (targets[i] - outputs[i]) * sigmoidDerivative(outputLayer[i]);
-        }
+                // Calculate the errors in the output layer and hidden layer
+                double[] outputErrors = new double[outputLayer.length];
+                for (int j = 0; j < outputLayer.length; j++) {
+                    outputErrors[j] = (targets[i][j] - outputs[j]) * sigmoidDerivative(outputLayer[j]);
+                }
 
-        double[] hiddenErrors = new double[hiddenLayer[0].length];
-        for (int i = 0; i < hiddenLayer[0].length; i++) {
-            double sum = 0.0;
-            for (int j = 0; j < outputLayer.length; j++) {
-                sum += outputErrors[j] * weightsHO[i][j];
+                double[] hiddenErrors = new double[hiddenLayer[0].length];
+                for (int j = 0; j < hiddenLayer[0].length; j++) {
+                    double sum = 0.0;
+                    for (int k = 0; k < outputLayer.length; k++) {
+                        sum += outputErrors[k] * weightsHO[j][k];
+                    }
+                    hiddenErrors[j] = sum * sigmoidDerivative(hiddenLayer[0][j]);
+                }
+
+                // Calculate the average loss for this batch
+                double batchLoss = 0.0;
+                for (int j = 0; j < outputLayer.length; j++) {
+                    batchLoss += Math.pow(targets[i][j] - outputs[j], 2);
+                }
+                batchLoss /= outputLayer.length;
+
+                // Add batch loss to the total loss
+                totalLoss += batchLoss;
+
+                // Adjust the weights and biases using the errors and the learning rate
+                for (int j = 0; j < outputLayer.length; j++) {
+                    for (int k = 0; k < hiddenLayer[0].length; k++) {
+                        double delta = learningRate * outputErrors[j] * hiddenLayer[0][k];
+                        weightsHO[k][j] += delta;
+                    }
+                    biasO[j] += learningRate * outputErrors[j];
+                }
+
+                for (int j = 0; j < hiddenLayer[0].length; j++) {
+                    for (int k = 0; k < inputLayer.length; k++) {
+                        double delta = learningRate * hiddenErrors[j] * inputLayer[k];
+                        weightsIH[k][j] += delta;
+                    }
+                    biasH[j] += learningRate * hiddenErrors[j];
+                }
             }
-            hiddenErrors[i] = sum * sigmoidDerivative(hiddenLayer[0][i]);
-        }
 
-        // Calculate the average loss for this batch
-        double loss = 0.0;
-        for (int i = 0; i < outputLayer.length; i++) {
-            loss += Math.pow(targets[i] - outputs[i], 2);
-        }
-        loss /= outputLayer.length;
+            // Calculate the average loss across all batches
+            double avgLoss = totalLoss / inputs.length;
 
-        // Adjust the weights and biases using the errors and the learning rate
-        for (int i = 0; i < outputLayer.length; i++) {
-            for (int j = 0; j < hiddenLayer[0].length; j++) {
-                double delta = learningRate * outputErrors[i] * hiddenLayer[0][j];
-                weightsHO[j][i] += delta;
-            }
-            biasO[i] += learningRate * outputErrors[i];
-        }
-
-        for (int i = 0; i < hiddenLayer[0].length; i++) {
-            for (int j = 0; j < inputLayer.length; j++) {
-                double delta = learningRate * hiddenErrors[i] * inputLayer[j];
-                weightsIH[j][i] += delta;
-            }
-            biasH[i] += learningRate * hiddenErrors[i];
+            // Print the average loss for this epoch
+            System.out.printf("Epoch %2d - Average Loss: %.6f\n", (e + 1), avgLoss);
         }
     }
+
 
 
     /**

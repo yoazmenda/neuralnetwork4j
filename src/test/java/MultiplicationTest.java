@@ -39,24 +39,18 @@ public class MultiplicationTest {
         List<double[]> testTargets = targets.subList(trainSize, datasetSize);
 
         // Initialize the neural network
-        NeuralNetwork nn = new NeuralNetwork(2, 10, 8, 1, 0.1);
+        NeuralNetwork nn = new NeuralNetwork(2, 10, 10, 1, 0.4);
 
         // Train the neural network
         int epochs = 5000;
-        for (int i = 0; i < epochs; i++) {
-            for (int j = 0; j < trainSize; j++) {
-                nn.train(trainInputs.get(j), trainTargets.get(j));
-            }
+        double[][] trainInputsArray = trainInputs.toArray(new double[trainSize][2]);
+        double[][] trainTargetsArray = trainTargets.toArray(new double[trainSize][1]);
+        nn.train(trainInputsArray, trainTargetsArray, epochs);
 
-            // Print progress
-            if (i % 500 == 0) {
-                System.out.println("Training progress: " + (double) i / epochs * 100 + "%");
-            }
-        }
 
         // Test the neural network
         int correct = 0;
-        double threshold = 0.05; // You can adjust the threshold based on your desired accuracy
+        double threshold = 0.001; // You can adjust the threshold based on your desired accuracy
         for (int i = 0; i < testSize; i++) {
             double[] output = nn.feedForward(testInputs.get(i));
             double predictedProduct = output[0];
